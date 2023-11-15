@@ -1,0 +1,79 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <string.h>
+
+void display_prompt(void);
+
+int main(void)
+{
+    pid_t pid;
+    char *buffer = NULL;
+    size_t bufsize = 0;
+
+    while (1)
+    {
+        display_prompt();
+
+        // Read user input
+        if (getline(&buffer, &bufsize, stdin) == -1)
+        {
+            // Handle end of file (Ctrl+D)
+            printf("\n");
+            free(buffer);
+            exit(EXIT_SUCCESS);
+        }
+
+        // Remove newline character
+        buffer[strcspn(buffer, "\n")] = '\0';
+
+        pid = fork();
+        if (pid == -1)
+        {
+            perror("fork");
+            free(buffer);
+            exit(EXIT_FAILURE);
+        }
+
+        if (pid == 0)
+        {
+            // Child process
+            char *token;
+            char *args[100]; // Assuming a maximum of 100 arguments
+
+            int i = 0;
+            token = strtok(buffer, " ");
+
+            // Tokenize the command line
+            while (token != NULL)
+            {
+                args[i++] = token;
+                token = strtok(NULL, " ");
+            }
+
+            args[i] = NULL; // Set the last element to NULL
+
+            // Execute the command with arguments
+            execvp(args[0], args);
+            
+            // If execvp fails
+            perror("execvp");
+            free(buffer);
+            exit(EXIT_FAILURE);
+        }
+        else
+        {
+            // Parent process
+            wait(NULL);
+        }
+    }
+
+    return 0;
+}
+
+void display_prompt(void)
+{
+    printf("#cisfun$ ");
+}
